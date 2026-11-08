@@ -1,6 +1,6 @@
 # Production stack: app + Caddy (automatic HTTPS).
 # Expects ./.env next to this file (secrets + DOMAIN).
-# Deploy: GitHub Actions (.github/workflows/deploy.yml) or scripts/deploy.sh.
+# Deployed by GitHub Actions (.github/workflows/deploy.yml).
 services:
   app:
     build:
@@ -11,8 +11,7 @@ services:
         VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
         VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
         VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
-    # Set by CI (ghcr.io/...:<sha>); local fallback when built on the server.
-    image: ${APP_IMAGE:-trener-personalny:latest}
+    image: trener-personalny:latest
     env_file: .env
     environment:
       NODE_ENV: production
