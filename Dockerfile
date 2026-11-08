@@ -16,13 +16,10 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 
-# Client-exposed vars are inlined into the bundle at build time.
-ARG VITE_APP_TITLE
-ARG VITE_FIREBASE_API_KEY
-ARG VITE_FIREBASE_AUTH_DOMAIN
-ARG VITE_FIREBASE_PROJECT_ID
-ARG VITE_FIREBASE_APP_ID
-RUN pnpm build \
+# The .env is mounted as a BuildKit secret: Vite inlines only VITE_* vars into
+# the client bundle, and the file itself never lands in an image layer.
+RUN --mount=type=secret,id=env,target=/app/.env \
+  pnpm build \
   && pnpm prune --prod --ignore-scripts
 
 # --- Runtime -----------------------------------------------------------------

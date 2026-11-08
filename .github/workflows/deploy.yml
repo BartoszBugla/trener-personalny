@@ -1,14 +1,11 @@
 # Tests every push and PR. On main: builds the Docker image here, copies it
-# to the server over SSH and restarts the app there.
+# and the production .env to the server over SSH, and restarts the app.
 #
-# Repo → Settings → Secrets and variables → Actions
-#   Secrets:
-#     SSH_HOST          2.29.139.62
-#     SSH_PRIVATE_KEY   contents of ~/.ssh/trener_deploy_ci
-#     SSH_KNOWN_HOSTS   output of: ssh-keyscan -t ed25519 2.29.139.62
-#   Variables (public Firebase web config, baked into the client bundle):
-#     VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN,
-#     VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_APP_ID
+# Repo → Settings → Secrets and variables → Actions → Secrets:
+#   ENV_FILE          the whole production .env (Firebase, AUTH_*, DOMAIN, VITE_* …)
+#   SSH_HOST          2.29.139.62
+#   SSH_PRIVATE_KEY   contents of ~/.ssh/trener_deploy_ci
+#   SSH_KNOWN_HOSTS   output of: ssh-keyscan -t ed25519 2.29.139.62
 name: CI / Deploy
 
 on:
@@ -44,14 +41,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build image
+      - name: Write .env
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
         run: |
-          docker build -t trener-personalny:latest \
-            --build-arg VITE_FIREBASE_API_KEY="${{ vars.VITE_FIREBASE_API_KEY }}" \
-            --build-arg VITE_FIREBASE_AUTH_DOMAIN="${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}" \
-            --build-arg VITE_FIREBASE_PROJECT_ID="${{ vars.VITE_FIREBASE_PROJECT_ID }}" \
-            --build-arg VITE_FIREBASE_APP_ID="${{ vars.VITE_FIREBASE_APP_ID }}" \
-            .
+          if [ -z "$ENV_FILE" ]; then echo "ENV_FILE secret is not set" >&2; exit 1; fi
+          printf '%s\n' "$ENV_FILE" > .env
+
+      - name: Build image
+        run: docker build --secret id=env,src=.env -t trener-personalny:latest .
 
       - name: Set up SSH
         run: |
@@ -60,10 +58,10 @@ jobs:
           echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_ed25519
 
-      - name: Copy image and config to server
+      - name: Copy image, .env and config to server
         run: |
           docker save trener-personalny:latest | gzip | ssh $SERVER docker load
-          scp docker-compose.yml Caddyfile $SERVER:/opt/trener/app/
+          scp .env docker-compose.yml Caddyfile $SERVER:/opt/trener/app/
 
       - name: Restart app
-        run: ssh $SERVER "cd /opt/trener/app && docker compose up -d --no-build --wait && docker image prune -f"
+        run: ssh $SERVER "cd /opt/trener/app && chmod 600 .env && docker compose up -d --no-build --wait && docker image prune -f"

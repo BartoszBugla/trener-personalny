@@ -1,16 +1,12 @@
 # Production stack: app + Caddy (automatic HTTPS).
-# Expects ./.env next to this file (secrets + DOMAIN).
+# Expects ./.env next to this file (secrets + DOMAIN); CI writes it from the
+# ENV_FILE GitHub secret on every deploy.
 # Deployed by GitHub Actions (.github/workflows/deploy.yml).
 services:
   app:
     build:
       context: .
-      args:
-        VITE_APP_TITLE: ${VITE_APP_TITLE:-}
-        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
-        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
-        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
-        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+      secrets: [env]
     image: trener-personalny:latest
     env_file: .env
     environment:
@@ -40,3 +36,7 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+
+secrets:
+  env:
+    file: .env
