@@ -1,7 +1,7 @@
 # Tests every push and PR. On main: builds the Docker image here, copies it
 # and the production .env to the server over SSH, and restarts the app.
 #
-# Repo → Settings → Secrets and variables → Actions → Secrets:
+# Repo → Settings → Environments → Production (deployment branch: main) → Secrets:
 #   ENV_FILE          the whole production .env (Firebase, AUTH_*, DOMAIN, VITE_* …)
 #   SSH_HOST          2.29.139.62
 #   SSH_PRIVATE_KEY   contents of ~/.ssh/trener_deploy_ci
@@ -35,6 +35,7 @@ jobs:
     needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    environment: Production
     concurrency: deploy
     env:
       SERVER: root@${{ secrets.SSH_HOST }}
