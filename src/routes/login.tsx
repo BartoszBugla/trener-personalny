@@ -21,10 +21,7 @@ function LoginPage() {
   const router = useRouter()
 
   return (
-    <div className="flex flex-col items-center gap-4 pt-8 sm:pt-16">
-      <p data-testid="ci-cd-test" className="text-sm text-muted-foreground">
-        CI/CD test marker 7f3a91
-      </p>
+    <div className="flex justify-center pt-8 sm:pt-16">
       <LoginCard
         onSignedIn={() =>
           // Root beforeLoad re-reads the session cookie on this navigation.
