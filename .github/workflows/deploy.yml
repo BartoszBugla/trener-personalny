@@ -5,7 +5,6 @@
 #   ENV_FILE          the whole production .env (Firebase, AUTH_*, DOMAIN, VITE_* …)
 #   SSH_HOST          2.29.139.62
 #   SSH_PRIVATE_KEY   contents of ~/.ssh/trener_deploy_ci
-#   SSH_KNOWN_HOSTS   output of: ssh-keyscan -t ed25519 2.29.139.62
 name: CI / Deploy
 
 on:
@@ -56,7 +55,8 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
-          echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          # Server's public host key (not a secret) – protects against MITM.
+          echo "${{ secrets.SSH_HOST }} ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGyzxiZcpxFtSp0I37WT/2NEBdDcQGUx+1QTQ2uu5f0c" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/id_ed25519
 
       - name: Copy image, .env and config to server
