@@ -1,0 +1,43 @@
+# Production stack: app + Caddy (automatic HTTPS).
+# Expects ./.env next to this file (secrets + DOMAIN).
+# Deploy: GitHub Actions (.github/workflows/deploy.yml) or scripts/deploy.sh.
+services:
+  app:
+    build:
+      context: .
+      args:
+        VITE_APP_TITLE: ${VITE_APP_TITLE:-}
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:-}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:-}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:-}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:-}
+    # Set by CI (ghcr.io/...:<sha>); local fallback when built on the server.
+    image: ${APP_IMAGE:-trener-personalny:latest}
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: /data/app.db
+    volumes:
+      - /opt/trener/data:/data
+      - /opt/trener/calendars:/calendars:ro
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    depends_on:
+      - app
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

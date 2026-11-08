@@ -1,0 +1,23 @@
+node_modules
+.DS_Store
+dist
+dist-ssr
+*.local
+.env
+.nitro
+.tanstack
+.wrangler
+.output
+.vinxi
+__unconfig*
+todos.json
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+coverage
+
+# Real trainer calendars (personal data) – see CALENDARS_DIR
+data/

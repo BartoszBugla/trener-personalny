@@ -1,0 +1,130 @@
+# CI/CD: lint + typecheck + test → build Docker image (GHCR) → deploy to server.
+#
+# Repository settings → Secrets and variables → Actions:
+#   Secrets:
+#     SSH_PRIVATE_KEY    private deploy key (its .pub is in the server's authorized_keys)
+#     SSH_KNOWN_HOSTS    output of: ssh-keyscan -t ed25519 <server-ip>
+#   Variables:
+#     DEPLOY_HOST        e.g. root@2.29.139.62   (build + deploy are skipped while unset)
+#     APP_URL            e.g. https://2-29-139-62.sslip.io
+#     VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN,
+#     VITE_FIREBASE_PROJECT_ID, VITE_FIREBASE_APP_ID, (optional) VITE_APP_TITLE
+#
+# Server-side secrets stay in /opt/trener/app/.env on the server, never in CI.
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  build:
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.DEPLOY_HOST != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.sha }}
+            ${{ steps.meta.outputs.image }}:latest
+          build-args: |
+            VITE_APP_TITLE=${{ vars.VITE_APP_TITLE }}
+            VITE_FIREBASE_API_KEY=${{ vars.VITE_FIREBASE_API_KEY }}
+            VITE_FIREBASE_AUTH_DOMAIN=${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
+            VITE_FIREBASE_PROJECT_ID=${{ vars.VITE_FIREBASE_PROJECT_ID }}
+            VITE_FIREBASE_APP_ID=${{ vars.VITE_FIREBASE_APP_ID }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      IMAGE: ${{ needs.build.outputs.image }}:${{ github.sha }}
+      DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+      APP_DIR: /opt/trener/app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Upload stack files
+        run: scp docker-compose.yml Caddyfile "$DEPLOY_HOST:$APP_DIR/"
+
+      - name: Pull image and restart
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          ssh "$DEPLOY_HOST" bash -s <<EOF
+          set -euo pipefail
+          cd "$APP_DIR"
+          echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin >/dev/null
+          trap 'docker logout ghcr.io >/dev/null' EXIT
+          # Record the deployed image so manual 'docker compose' runs use it too.
+          if grep -q '^APP_IMAGE=' .env; then
+            sed -i "s|^APP_IMAGE=.*|APP_IMAGE=$IMAGE|" .env
+          else
+            printf '\nAPP_IMAGE=%s\n' "$IMAGE" >> .env
+          fi
+          docker compose pull app
+          docker compose up -d --no-build --remove-orphans
+          docker image prune -f >/dev/null
+          EOF
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 24); do
+            if curl -fsS "${{ vars.APP_URL }}/api/health"; then exit 0; fi
+            sleep 5
+          done
+          echo "Health check failed" >&2
+          exit 1

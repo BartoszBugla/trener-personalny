@@ -1,0 +1,30 @@
+{
+  "projectName": "trener-personalny",
+  "mode": "file-router",
+  "bundler": "vite",
+  "typescript": true,
+  "tailwind": true,
+  "packageManager": "pnpm",
+  "git": true,
+  "install": true,
+  "intent": false,
+  "addOnOptions": {
+    "drizzle": {
+      "database": "sqlite"
+    }
+  },
+  "projectPreset": "default",
+  "routerOnly": false,
+  "includeExamples": false,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "shadcn",
+    "drizzle",
+    "tanstack-query",
+    "form",
+    "t3env",
+    "nitro",
+    "eslint"
+  ]
+}

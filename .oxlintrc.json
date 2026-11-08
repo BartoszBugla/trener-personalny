@@ -1,0 +1,96 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [
+    "typescript",
+    "unicorn",
+    "oxc",
+    "react",
+    "jsx-a11y",
+    "import",
+    "promise",
+    "vitest"
+  ],
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2024": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "rules": {
+    "eqeqeq": ["error", "smart"],
+    "no-console": [
+      "warn",
+      {
+        "allow": ["warn", "error"]
+      }
+    ],
+    "no-debugger": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "typescript/consistent-type-imports": "error",
+    "typescript/no-explicit-any": "warn",
+    "typescript/no-non-null-assertion": "warn",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn",
+    "react/jsx-key": "error",
+    "react/self-closing-comp": "warn",
+    "react/react-in-jsx-scope": "off",
+    "import/no-duplicates": "error",
+    "import/no-self-import": "error",
+    "import/no-cycle": "off",
+    "unicorn/prefer-node-protocol": "error",
+    "unicorn/no-useless-spread": "warn",
+    "unicorn/no-array-for-each": "off",
+    "unicorn/no-null": "off",
+    "promise/no-return-wrap": "error",
+    "no-underscore-dangle": "off",
+    "import/no-unassigned-import": [
+      "warn",
+      {
+        "allow": ["reflect-metadata", "**/*.css"]
+      }
+    ],
+    "vitest/require-mock-type-parameters": "off"
+  },
+  "settings": {
+    "react": {
+      "version": "19"
+    }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}"],
+      "rules": {
+        "typescript/no-explicit-any": "off",
+        "typescript/no-non-null-assertion": "off"
+      }
+    },
+    {
+      "files": ["scripts/**", "*.config.{ts,js}"],
+      "rules": {
+        "no-console": "off",
+        "no-await-in-loop": "off"
+      }
+    }
+  ],
+  "ignorePatterns": [
+    ".output/**",
+    ".nitro/**",
+    ".tanstack/**",
+    "drizzle/**",
+    "coverage/**",
+    "src/routeTree.gen.ts"
+  ]
+}
