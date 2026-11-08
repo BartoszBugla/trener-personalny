@@ -47,6 +47,7 @@ jobs:
         run: |
           if [ -z "$ENV_FILE" ]; then echo "ENV_FILE secret is not set" >&2; exit 1; fi
           printf '%s\n' "$ENV_FILE" > .env
+          docker compose config --quiet  # fail here, not on the server, if .env is malformed
 
       - name: Build image
         run: docker build --secret id=env,src=.env -t trener-personalny:latest .
