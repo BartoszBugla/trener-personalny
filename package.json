@@ -10,6 +10,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate",
+    "db:check": "node scripts/check-migrations.mjs",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
